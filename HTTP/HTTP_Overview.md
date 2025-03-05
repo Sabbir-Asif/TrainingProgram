@@ -556,3 +556,337 @@ Server: ← [Stream 2] 200 OK (style.css)
 Multiplexing in HTTP/2 significantly improves the performance of web applications by allowing multiple requests and responses to be handled simultaneously, reducing latency and making better use of network resources.
 
 
+<br>
+
+## What Can Be Controlled by HTTP
+
+The extensible nature of HTTP has allowed for more control and functionality over time. Features such as caching and authentication were implemented early, while others, like relaxing the origin constraint, were introduced later. Below are common features controllable via HTTP, along with examples.
+
+---
+
+### 1. Caching
+
+HTTP allows control over how documents are cached by instructing proxies and clients on what to cache and for how long.
+
+#### Example: Controlling Cache Behavior
+
+**Server Response:**
+```http
+HTTP/1.1 200 OK  
+Cache-Control: max-age=3600, public  
+```
+This response tells clients and proxies to cache the document for one hour (3600 seconds).
+
+**Client Request to Ignore Cache:**
+```http
+GET /index.html HTTP/1.1  
+Cache-Control: no-cache  
+```
+The client requests a fresh copy of the document, ignoring any cached version.
+
+---
+
+### 2. Relaxing the Origin Constraint
+
+Web browsers enforce strict separation between sites to prevent unauthorized access to user data. However, HTTP headers can relax these constraints for controlled cross-origin resource sharing (CORS).
+
+#### Example: Enabling CORS
+
+**Server Response Allowing Cross-Origin Requests:**
+```http
+HTTP/1.1 200 OK  
+Access-Control-Allow-Origin: *  
+```
+This allows any website to request data from the server.
+
+For restricted access, specific domains can be allowed:
+```http
+Access-Control-Allow-Origin: https://example.com  
+```
+Only `example.com` can request data from the server.
+
+---
+
+### 3. Authentication
+
+Some web pages require authentication before granting access. HTTP provides built-in authentication mechanisms.
+
+#### Example: Basic Authentication
+
+**Server Response Requesting Authentication:**
+```http
+HTTP/1.1 401 Unauthorized  
+WWW-Authenticate: Basic realm="Secure Area"  
+```
+
+**Client Request with Credentials:**
+```http
+GET /secure-page HTTP/1.1  
+Authorization: Basic dXNlcjpwYXNzd29yZA==  
+```
+The `Authorization` header contains a Base64-encoded username and password (`user:password`).
+
+---
+
+### 4. Proxy and Tunneling
+
+Proxies enable HTTP requests to traverse network boundaries. They can cache responses, filter requests, or anonymize client identities.
+
+#### Example: Proxy Usage
+
+**Client Request via Proxy:**
+```http
+GET http://example.com/index.html HTTP/1.1  
+Host: example.com  
+Proxy-Authorization: Basic dXNlcjpwYXNzd29yZA==  
+```
+The request is sent through a proxy, with optional authentication.
+
+---
+
+### 5. Sessions
+
+Because HTTP is stateless, cookies enable session management by maintaining user-specific data across requests.
+
+#### Example: Session Management with Cookies
+
+**Server Response Setting a Session Cookie:**
+```http
+HTTP/1.1 200 OK  
+Set-Cookie: session_id=abc123; Path=/; HttpOnly  
+```
+
+**Client Request with Session Cookie:**
+```http
+GET /dashboard HTTP/1.1  
+Cookie: session_id=abc123  
+```
+The server identifies the user session using the `session_id` cookie.
+
+---  
+
+<br>
+
+## HTTP Flow
+
+When a client wants to communicate with a server—whether the final server or an intermediate proxy—it follows these steps:
+
+### 1. Open a TCP Connection
+The TCP connection is used to send one or more requests and receive responses. The client may:
+- Open a new connection.
+- Reuse an existing connection.
+- Open multiple TCP connections to the server.
+
+### 2. Send an HTTP Message
+HTTP messages (before HTTP/2) are human-readable. With HTTP/2, these messages are encapsulated in frames, making them unreadable directly, though the underlying principle remains the same.
+
+#### Example: Client Request
+```http
+GET / HTTP/1.1  
+Host: developer.mozilla.org  
+Accept-Language: fr  
+```
+
+
+### 3. Read the Server Response
+The server processes the request and responds accordingly.
+
+#### Example: Server Response
+```http
+HTTP/1.1 200 OK  
+Date: Sat, 09 Oct 2010 14:28:02 GMT  
+Server: Apache  
+Last-Modified: Tue, 01 Dec 2009 20:18:22 GMT  
+ETag: "51142bc1-7449-479b075b2891b"  
+Accept-Ranges: bytes  
+Content-Length: 29769  
+Content-Type: text/html  
+
+<!doctype html>… (29769 bytes of the requested web page)  
+```
+
+
+### 4. Close or Reuse the Connection
+The client can either close the connection or keep it open for further requests.
+
+If **HTTP pipelining** is activated, multiple requests can be sent without waiting for the first response to be fully received. However, HTTP pipelining proved difficult to implement due to network incompatibilities. In **HTTP/2**, pipelining has been replaced by a more efficient multiplexing mechanism within a single connection.
+
+<br>
+
+## HTTP Messages  
+HTTP messages, as defined in HTTP/1.1 and earlier, are human-readable. In HTTP/2, these messages are embedded into a binary structure, a frame, allowing optimizations like compression of headers and multiplexing.   
+<br>
+There are two types of HTTP messages, requests and responses, each with its own format.  
+<br>
+
+### Requests  
+
+An example HTTP request:  
+
+<img src="../Assets/HTTP/http-request.svg" alt="HTTP Diagram" width="600"> 
+
+### HTTP Request Elements
+
+An HTTP request consists of the following elements:
+
+#### 1. HTTP Method
+An HTTP method is usually a verb like `GET`, `POST`, or a noun like `OPTIONS` or `HEAD` that defines the operation the client wants to perform. Common operations include:
+- **GET**: Fetch a resource.
+- **POST**: Submit data (e.g., form values) to be processed.
+- **PUT**: Update an existing resource or create a new one.
+- **DELETE**: Remove a specified resource.
+- **OPTIONS**: Retrieve available communication options for the target resource.
+- **HEAD**: Fetch only the headers of a resource (without the body).
+
+#### 2. Resource Path
+The path specifies the resource to fetch. It is the URL of the resource, stripped of elements that are obvious from the context. For example:
+- Without the protocol (`http://` or `https://`)
+- Without the domain (e.g., `developer.mozilla.org`)
+- Without the TCP port (e.g., `80` for HTTP, `443` for HTTPS)
+
+Example:
+```
+GET /articles/page1 HTTP/1.1
+```
+
+#### 3. HTTP Version
+Specifies the version of the HTTP protocol being used. Common versions include:
+- HTTP/1.0
+- HTTP/1.1
+- HTTP/2
+- HTTP/3
+
+#### 4. Headers
+Optional headers provide additional information for the server. These include:
+- `User-Agent`: Identifies the client (browser, bot, etc.).
+- `Accept`: Defines acceptable response types (e.g., `text/html`, `application/json`).
+- `Host`: Specifies the server's domain name.
+- `Authorization`: Sends authentication credentials.
+
+Example:
+```
+Host: developer.mozilla.org
+User-Agent: Mozilla/5.0
+Accept-Language: en-US
+```
+
+#### 5. Request Body (Optional)
+Some HTTP methods, such as `POST` and `PUT`, include a request body containing the resource being sent. This is similar to response bodies but represents data submitted by the client.
+
+Example (POST request with form data):
+```
+POST /submit-form HTTP/1.1
+Host: example.com
+Content-Type: application/x-www-form-urlencoded
+
+name=John&email=john@example.com
+```
+
+This structured format ensures that HTTP requests are processed correctly by servers.
+
+
+### Responses  
+
+An example response:  
+
+<img src="../Assets/HTTP/http-response.svg" alt="HTTP Diagram" width="600">  
+
+### HTTP Response Elements
+
+An HTTP response consists of the following elements:
+
+1. **Version**
+   - The version of the HTTP protocol being used.
+
+2. **Status Code**
+   - A numeric code indicating whether the request was successful or not, and the reason for the status.
+   - Examples:
+     - `200 OK` (Successful request)
+     - `404 Not Found` (Requested resource not found)
+     - `500 Internal Server Error` (Server encountered an error)
+
+3. **Status Message**
+   - A short, human-readable description of the status code.
+   
+4. **HTTP Headers**
+   - Provide additional information about the response, such as content type, caching policies, and server details.
+   - Example headers:
+     ```
+     Content-Type: text/html
+     Date: Tue, 05 Mar 2024 12:00:00 GMT
+     Server: Apache
+     ```
+   
+5. **Body (Optional)**
+   - Contains the resource being returned, such as an HTML page, JSON data, or an image.
+   - Example:
+     ```html
+     <!DOCTYPE html>
+     <html>
+     <head><title>Example</title></head>
+     <body><h1>Hello, World!</h1></body>
+     </html>
+     
+<br>
+
+## APIs Based on HTTP
+
+#### Fetch API
+The most commonly used API based on HTTP is the Fetch API, which is used to make HTTP requests from JavaScript. The Fetch API replaces the older XMLHttpRequest API and provides a more flexible and modern approach to handling HTTP requests.
+
+##### Example: Fetch API Usage
+```javascript
+fetch('https://api.example.com/data')
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+```
+In this example:
+- `fetch` is used to send a GET request to `https://api.example.com/data`.
+- The response is converted to JSON using `response.json()`.
+- The data is then logged to the console.
+- Errors are caught and logged.
+
+#### Server-Sent Events (SSE)
+Server-Sent Events (SSE) is a one-way service that allows a server to send events to the client using HTTP as a transport mechanism. The client opens a connection using the `EventSource` interface and establishes event handlers.
+
+##### Example: Server-Sent Events (SSE)
+
+**Client-side JavaScript:**
+```javascript
+const eventSource = new EventSource('https://api.example.com/events');
+
+eventSource.onmessage = function(event) {
+  console.log('New event:', event.data);
+};
+
+eventSource.onerror = function(error) {
+  console.error('EventSource failed:', error);
+};
+```
+- The client creates a connection to `https://api.example.com/events`.
+- The `onmessage` event handler processes incoming messages.
+- The `onerror` handler deals with any connection issues.
+
+**Server-side (Example using Node.js Express):**
+```javascript
+const express = require('express');
+const app = express();
+
+app.get('/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  setInterval(() => {
+    res.write(`data: ${JSON.stringify({ message: 'Hello, Client!' })}\n\n`);
+  }, 3000);
+});
+
+app.listen(3000, () => console.log('Server running on port 3000'));
+```
+- The server sets necessary headers for SSE.
+- It sends a new event to the client every 3 seconds.
+
+
+
