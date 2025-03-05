@@ -303,4 +303,256 @@ Here, the `X-Enable-Compression: gzip` header informs the server that the client
 
 This ability to **add new headers** without modifying the protocol itself makes HTTP a **flexible and evolving** communication standard.
 
+<br>
+
+## HTTP is Stateless, but Not Sessionless
+
+HTTP is a stateless protocol, meaning each request from a client to a server is treated as independent, with no memory of previous interactions. However, this can be problematic for web applications that require stateful behavior, such as login sessions or shopping carts.
+
+To solve this, HTTP cookies allow the use of stateful sessions, maintaining context across multiple HTTP requests.
+
+---
+
+### Example: Stateless HTTP Request
+Since HTTP does not remember past interactions, let's look at two separate requests from the same user:
+
+#### 1st Request – Login Page
+The user requests the login page:
+
+```http
+GET /login HTTP/1.1  
+Host: example.com  
+```
+
+**Server Response:**
+
+```http
+HTTP/1.1 200 OK  
+Content-Type: text/html  
+```
+
+The server serves the login page but does not track this user’s request history.
+
+---
+
+#### 2nd Request – Dashboard (Without a Session Cookie)
+Now, if the user immediately requests the dashboard:
+
+```http
+GET /dashboard HTTP/1.1  
+Host: example.com  
+```
+
+**Server Response:**
+
+```http
+HTTP/1.1 401 Unauthorized  
+Content-Type: text/html  
+```
+
+The server has no memory of the login request, so it denies access to the dashboard.
+
+---
+
+### Using Cookies for Stateful Sessions
+To maintain a session, the server sends a session cookie upon login.
+
+#### 1st Request – Login with Session Creation
+
+```http
+POST /login HTTP/1.1  
+Host: example.com  
+Content-Type: application/x-www-form-urlencoded  
+
+username=user&password=pass  
+```
+
+**Server Response (with a session cookie):**
+
+```http
+HTTP/1.1 200 OK  
+Set-Cookie: session_id=abc123; Path=/; HttpOnly  
+```
+
+Now, the client stores `session_id=abc123` and includes it in future requests.
+
+---
+
+#### 2nd Request – Dashboard (With a Session Cookie)
+Now, when accessing the dashboard, the browser includes the session cookie:
+
+```http
+GET /dashboard HTTP/1.1  
+Host: example.com  
+Cookie: session_id=abc123  
+```
+
+**Server Response:**
+
+```http
+HTTP/1.1 200 OK  
+Content-Type: text/html  
+```
+
+Since the session ID matches the logged-in user, the request is accepted, and the dashboard is shown.
+
+---
+
+### Why This Matters
+- **Stateless by Design**: HTTP itself does not track requests between clients and servers.
+- **Stateful Sessions with Cookies**: Servers use cookies to maintain user state across requests.
+- **Session Management**: This enables essential web features like authentication, shopping carts, and user preferences.  
+
+<br>
+
+## HTTP and Connections
+
+HTTP operates at the application layer, while connections are managed by the transport layer (such as TCP or UDP). HTTP itself does not require a connection-based transport protocol but does require a reliable one. Since TCP (Transmission Control Protocol) is reliable (ensuring no data loss), HTTP is typically built on top of TCP.
+
+### Example: HTTP Over TCP (Default HTTP/1.0 Behavior)
+
+In HTTP/1.0, a new TCP connection is opened for every request-response cycle, which leads to inefficiencies.
+
+#### 1st Request – New Connection Created
+```
+GET /index.html HTTP/1.0
+Host: example.com
+```
+- TCP connection opens → HTTP request sent → Server responds → TCP connection closes.
+
+#### 2nd Request – Another New Connection Needed
+```
+GET /about.html HTTP/1.0
+Host: example.com
+```
+- A new TCP connection must be established again for this request.
+
+**Problem:** Opening and closing connections repeatedly increases latency and resource usage.
+
+### HTTP/1.1 – Persistent Connections and Pipelining
+
+To optimize performance, HTTP/1.1 introduced persistent connections and pipelining.
+
+#### Persistent Connections Example
+
+In HTTP/1.1, a connection can remain open for multiple requests using the `Connection: keep-alive` header.
+
+**Client Request 1 (Keeps Connection Open)**
+```
+GET /index.html HTTP/1.1
+Host: example.com
+Connection: keep-alive
+```
+- TCP connection remains open for further requests.
+
+**Client Request 2 (Uses Same Connection)**
+```
+GET /about.html HTTP/1.1
+Host: example.com
+```
+
+**Benefit:** Reduces the need to open/close connections repeatedly, improving efficiency.
+
+**Pipelining** (introduced in HTTP/1.1) allows sending multiple requests at once without waiting for responses, but it proved difficult to implement and was rarely used.
+
+### HTTP/2 – Multiplexing for Even Better Performance
+
+HTTP/2 solves connection inefficiencies by introducing multiplexing, which allows multiple HTTP requests to be sent simultaneously over a single TCP connection.
+
+#### Example of HTTP/2 Multiplexing
+
+Instead of sending one request at a time, HTTP/2 streams multiple requests and responses in parallel.
+
+**Client Sends Multiple Requests Over a Single Connection**
+```
+[Stream 1] → GET /index.html
+[Stream 2] → GET /about.html
+[Stream 3] → GET /contact.html
+```
+
+**Server Responds As Data Becomes Available**
+```
+[Stream 2] ← 200 OK (about.html)
+[Stream 1] ← 200 OK (index.html)
+[Stream 3] ← 200 OK (contact.html)
+```
+
+**Benefit:**
+- No need for separate TCP connections for each request.
+- Faster page loads as requests and responses are processed in parallel.
+- Better network resource utilization.
+
+### Summary of HTTP Connection Improvements
+
+| HTTP Version | Connection Behavior |
+|-------------|---------------------|
+| HTTP/1.0    | Opens a new TCP connection for every request-response. |
+| HTTP/1.1    | Supports persistent connections (`Connection: keep-alive`), reducing overhead. |
+| HTTP/2      | Uses multiplexing to send multiple requests/responses simultaneously over one connection. |
+
+<br>
+
+### What is Multiplexing?
+Multiplexing is a technique that allows multiple signals or data streams to be transmitted simultaneously over a single communication channel. In the context of HTTP/2, multiplexing enables multiple HTTP requests and responses to be sent and received in parallel over a single TCP connection, eliminating the need to wait for one request to complete before starting another.
+
+### How Multiplexing Works in HTTP/2
+In HTTP/1.1, if a client sends multiple requests, they are processed one after another in a queue (causing delays due to "head-of-line blocking"). With HTTP/2 multiplexing, multiple requests are sent together, and responses are received as soon as they are ready, without waiting for other responses to finish.
+
+### Example Without Multiplexing (HTTP/1.1)
+#### Scenario: A Browser Requests Three Files
+A web page requires:
+- `index.html`
+- `style.css`
+- `script.js`
+
+Without multiplexing (HTTP/1.1), each request must wait for the previous one to complete:
+
+```
+Client: → GET /index.html   (Request 1)  
+Server: ← 200 OK (index.html)  
+
+Client: → GET /style.css    (Request 2)  
+Server: ← 200 OK (style.css)  
+
+Client: → GET /script.js    (Request 3)  
+Server: ← 200 OK (script.js)  
+```
+
+**Problem:** Each request is sent sequentially, causing delays and inefficient resource use.
+
+### Example With Multiplexing (HTTP/2)
+#### Same Scenario, But Using HTTP/2 Multiplexing
+With HTTP/2, all three requests can be sent simultaneously, and responses arrive as they are processed.
+
+```
+Client: → [Stream 1] GET /index.html  
+        → [Stream 2] GET /style.css  
+        → [Stream 3] GET /script.js  
+```
+
+**Server processes them in parallel and responds as soon as each file is ready:**
+
+```
+Server: ← [Stream 2] 200 OK (style.css)  
+        ← [Stream 1] 200 OK (index.html)  
+        ← [Stream 3] 200 OK (script.js)  
+```
+
+**Benefit:** No waiting! Files are downloaded in parallel, speeding up webpage loading.
+
+### Key Benefits of Multiplexing in HTTP/2
+- **Faster Page Load** – Multiple files are sent and received at the same time.
+- **Eliminates Head-of-Line Blocking** – No need to wait for one request to finish before sending another.
+- **Efficient Use of a Single TCP Connection** – Reduces network congestion and improves performance.
+- **Reduces Latency** – Requests and responses happen asynchronously instead of sequentially.
+
+### Summary: HTTP/1.1 vs. HTTP/2 Multiplexing
+| Feature                  | HTTP/1.1 (No Multiplexing) | HTTP/2 (With Multiplexing) |
+|--------------------------|--------------------------|---------------------------|
+| Requests per Connection  | One at a time (sequential) | Multiple at the same time |
+| Head-of-Line Blocking    | Yes, requests must wait   | No, responses arrive independently |
+| Efficiency               | Slower, multiple connections needed | Faster, single connection |
+
+Multiplexing in HTTP/2 significantly improves the performance of web applications by allowing multiple requests and responses to be handled simultaneously, reducing latency and making better use of network resources.
+
 
