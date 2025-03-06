@@ -13,3 +13,9 @@ For each IP machine, TCP supports (multiplexes) up to <b>65536</b> ports (or soc
 - DNS at 23
 
 #### Port 1024 and above are available to the users.
+
+- TCP port 80 is the default port assigned for HTTP communication.
+- HTTP servers can run on other ports (1024-65535), such as 8000 or 8080, often used for testing.
+- Multiple HTTP servers can operate on the same machine by using different port numbers.
+- When a client requests a URL without specifying a port (e.g., `http://www.nowhere123.com/docs/index.html`), the browser defaults to port 80.
+- If an HTTP server listens on a non-default port, the port must be explicitly mentioned in the URL (e.g., `http://www.nowhere123.com:8000/docs/index.html`).
