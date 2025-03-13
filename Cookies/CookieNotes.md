@@ -1,11 +1,8 @@
+# Cookie  
+A cookie is a small piece of data that a server sends to a user's web browser, which is stored on the user's device and sent back to the server with subsequent requests.   
 
-Goal: 
-1. Store the static files (js, css) for long period of time in cache so that we can serve these files quickly.
-2. Always serve the fresh file if the file is updated.
+Cookies are mainly used for three purposes:
 
-solution:
-CDN caches the file according to its url.
-1. E-tag: 
-filename remains uchanged we track the changes by checking if-not-modified header, that needs to be verified by the server. 
-2. Cache busting:
-client requests for the updated resourse with new url. CDN does not find it in the cache as the url changes. so it fetches the updated resourse withour relying on cache validation.
+- **Session management:** User sign-in status, shopping cart contents, game scores, or any other user session-related details that the server needs to remember.
+- **Personalization:** User preferences such as display language and UI theme.
+- **Tracking:** Recording and analyzing user behavior.
